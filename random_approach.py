@@ -1,4 +1,4 @@
-import random  # Імпортуємо модуль random для генерації випадкових чисел
+import random 
 from algorithm import genetic_algorithm, TIMESLOTS
 
 
@@ -110,7 +110,7 @@ def generate_random_lecturers(num_lecturers, subjects):
         subjects_can_teach = [subj['SubjectID'] for subj in can_teach_subjects]  # Отримуємо ідентифікатори цих предметів
         # Випадково вибираємо типи занять, які викладач може проводити ('Лекція', 'Практика' або обидва)
         types_can_teach = random.sample(['Лекція', 'Практика'], random.randint(1, 2))
-        max_hours_per_week = random.randint(10, 20)  # Випадкова максимальна кількість годин на тиждень
+        max_hours_per_week = random.randint(20, 35)  # Випадкова максимальна кількість годин на тиждень
         lecturers[lecturer_id] = {
             'LecturerName': lecturer_name,  # Ім'я викладача
             'SubjectsCanTeach': subjects_can_teach,  # Список предметів, які може викладати
@@ -125,7 +125,7 @@ def generate_random_auditoriums(num_auditoriums):
     auditoriums = {}  # Створюємо порожній словник для аудиторій
     for i in range(1, num_auditoriums + 1):
         auditorium_id = f"A{i}"  # Створюємо ідентифікатор аудиторії (наприклад, 'A1')
-        capacity = random.randint(30, 50)  # Випадкова місткість аудиторії від 30 до 50
+        capacity = random.randint(30, 70)  # Випадкова місткість аудиторії від 30 до 50
         auditoriums[auditorium_id] = capacity  # Зберігаємо місткість аудиторії
     return auditoriums  # Повертаємо словник аудиторій
 
@@ -158,7 +158,7 @@ def print_individual_schedule(schedule, lecturer_id, lecturers, groups, auditori
     #print(f"Розклад для викладача: {lecturers[lecturer_id]['LecturerName']}")
     print(f"{'Timeslot':<25} {'Group(s)':<30} {'Subject':<30} {'Type':<15} {'Lecturer':<10}"
           f"{'Auditorium':<10} {'Students':<10} {'Capacity':<10}")
-    print("-" * 130)
+    print("-" * 140)
 
     # Виводимо інформацію для кожної події викладача
     for event in schedule:

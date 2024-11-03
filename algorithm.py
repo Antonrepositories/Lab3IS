@@ -32,7 +32,9 @@ class Event:
 
 class Schedule:
     def __init__(self):
-        self.events = [] 
+        self.events = []
+        self.soft_constraints_score = 0 
+        self.hard_consts_score = 0
 
     def add_event(self, event):
         if event:
@@ -53,6 +55,7 @@ class Schedule:
             # Жорсткі обмеження
             lt_key = (event.lecturer_id, event.timeslot)
             if lt_key in lecturer_times:
+                #hard_constraints_violations += 1  
                 if lecturer_times[lt_key] != event:
                     hard_constraints_violations += 1  
                     #print(hard_constraints_violations)
@@ -61,6 +64,7 @@ class Schedule:
             for group_id in event.group_ids:
                 gt_key = (group_id, event.timeslot)
                 if gt_key in group_times:
+                    #hard_constraints_violations += 1  
                     if group_times[gt_key] != event:
                         hard_constraints_violations += 1  
                         #print(hard_constraints_violations)
@@ -70,6 +74,7 @@ class Schedule:
                     subgroup_id = event.subgroup_ids[group_id]
                     sgt_key = (group_id, subgroup_id, event.timeslot)
                     if sgt_key in subgroup_times:
+                        #hard_constraints_violations += 1  
                         if subgroup_times[sgt_key] != event:
                             hard_constraints_violations += 1  
                             #print(hard_constraints_violations)
@@ -78,10 +83,15 @@ class Schedule:
 
             at_key = (event.auditorium_id, event.timeslot)
             if at_key in auditorium_times:
+                #event_list = {key: value for key, value in auditorium_times.items() if key[1] == event.timeslot and key[0] == event.auditorium_id}
+                #event_list = [auditorium_times[at_key]]
                 existing_event = auditorium_times[at_key]
-                if (event.event_type == 'Лекція' and
-                        existing_event.event_type == 'Лекція' and
-                        event.lecturer_id == existing_event.lecturer_id):
+                #print(f"EVENT {len(existing_event)}")
+                #print(f"EVENT {event_list}")
+                #lid = existing_event.lecturer_id
+                #same_lecturer_events = {key: value for key, value in auditorium_times.items() if value.lecturer_id == lid}
+                if (event.event_type == 'Лекція' and existing_event.event_type == 'Лекція' and event.lecturer_id == existing_event.lecturer_id):# and len(same_lecturer_events) == 1):
+                    #print(f"EVENT {len(same_lecturer_events)}")
                     # Об'єднуємо лекції з тим самим викладачем
                     pass
                 else:
@@ -95,8 +105,8 @@ class Schedule:
             lecturer_hours_key = (event.lecturer_id, week)
             lecturer_hours[lecturer_hours_key] = lecturer_hours.get(lecturer_hours_key, 0) + 1.5
             if lecturer_hours[lecturer_hours_key] > lecturers[event.lecturer_id]['MaxHoursPerWeek']:
-                soft_constraints_score += 0  # Перевищено навантаження ОТУТА ХУЄПУТАЛО ВИПРАВИТИ
-
+                #print(f"Lecturer {event.lecturer_id} hours: {lecturer_hours[lecturer_hours_key]}")
+                soft_constraints_score += 1  # Перевищено навантаження 
 
             # Перевірка місткості аудиторії
             total_group_size = sum(
@@ -113,7 +123,8 @@ class Schedule:
             if event.event_type not in lecturers[event.lecturer_id]['TypesCanTeach']:
                 soft_constraints_score += 1 
         total_score = hard_constraints_violations * 10 + soft_constraints_score  # Жорсткі обмеження важать більше
-        self.hard_constraints_violations = hard_constraints_violations  # Зберігаємо кількість порушень
+        self.soft_constraints_score = soft_constraints_score  # Зберігаємо кількість порушень
+        self.hard_consts_score = hard_constraints_violations
         return total_score
 
 
@@ -128,7 +139,6 @@ def generate_initial_population(pop_size, groups, subjects, lecturers, auditoriu
 
         for subj in subjects:
             weeks = [subj['WeekType']] if subj['WeekType'] in WEEK_TYPE else WEEK_TYPE
-            #print(f"WEEEEEEEEEEEEEEEEEEEEKKKKKKKKKKKKKKSSSSSSS {weeks}")
             for week in weeks:
                 # Додаємо лекції
                 for _ in range(subj['NumLectures']):
@@ -258,7 +268,7 @@ def create_random_event(
         (aid, cap) for aid, cap in auditoriums.items() if cap >= total_group_size
     ]
     if not suitable_auditoriums:
-        return None  # Немає аудиторій з достатньою місткістю
+        return None 
 
     # Випадковим чином обираємо аудиторію з доступних
     random.shuffle(suitable_auditoriums)
@@ -269,7 +279,7 @@ def create_random_event(
             auditorium_id = aid
             break
     if not auditorium_id:
-        return None  # Всі аудиторії зайняті
+        return None
 
     event = Event(
         timeslot, group_ids, subj['SubjectID'], subj['SubjectName'],
@@ -285,7 +295,6 @@ def create_random_event(
             subgroup_id = subgroup_ids[group_id]
             subgroup_key = (group_id, subgroup_id, timeslot)
             subgroup_times[subgroup_key] = event
-            #print(subgroup_ids)
     auditorium_times[(auditorium_id, timeslot)] = event
 
     return event
@@ -304,7 +313,7 @@ def herbivore_smoothing(population, best_schedule, lecturers, auditoriums):
     new_population = []
     for _ in range(len(population)):
         new_schedule = copy.deepcopy(best_schedule)  # Копіюємо найкращий розклад
-        mutate(new_schedule, lecturers, auditoriums, intensity=0.1)  # Виконуємо мутацію з низькою інтенсивністю
+        mutate(new_schedule, lecturers, auditoriums, intensity=0.3)  # Виконуємо мутацію з низькою інтенсивністю
         new_population.append(new_schedule)
     return new_population
 
@@ -372,22 +381,31 @@ def can_swap_lecturers(event1, event2):
     return event1.lecturer_id != event2.lecturer_id
 
 
-# Генетичний алгоритм для оптимізації розкладу
+def soft_constraints_fitness(schedule):
+    return schedule.soft_constraints_score
+
+def select_top_n(population, fitness_function, n):
+    population.sort(key=fitness_function)
+    return population[:n]
+
+
+
 def genetic_algorithm(groups, subjects, lecturers, auditoriums, generations=1000):
     global best_schedule
-    population_size = 50  # Фіксований розмір популяції
+    population_size = 30  # Фіксований розмір популяції
     population = generate_initial_population(population_size, groups, subjects, lecturers, auditoriums)
     #print(population)
     fitness_function = Schedule.fitness  # Використовуємо основну функцію оцінки
     ft = 100
     #for generation in range(generations):
     i = 0
-    while ft > 20:
+    last_20_results = []
+    while ft > 10:
         # Оцінка популяції та відбір найкращих
         #best_schedule = population[0]
         #best_fitness = fitness_function(best_schedule, groups, lecturers, auditoriums)
         #print(f"Покоління: {generation + 1}, Найкраща пристосованість: {best_fitness}")
-        population = select_population(population, groups, lecturers, auditoriums, fitness_function)
+        population = predator_approach(population, groups, lecturers, auditoriums, fitness_function)
         if not population:
             print("Population is empty after the selection. Finishing the algorithm.")
             break
@@ -397,13 +415,25 @@ def genetic_algorithm(groups, subjects, lecturers, auditoriums, generations=1000
         i += 1
         ft = best_fitness
         # Якщо досягли оптимального розкладу
-        if best_fitness < 15:
+        if best_fitness < 10 and best_schedule.hard_consts_score == 0:
             break
+
+        last_20_results.append(best_fitness)
+
+        if len(last_20_results) == 20:
+            first_half = last_20_results[:10]
+            second_half = last_20_results[10:]
+            first_half_avg = sum(first_half) / len(first_half)
+            second_half_avg = sum(second_half) / len(second_half)
+            if second_half_avg > first_half_avg and best_schedule.hard_consts_score == 0:
+                break
+            else:
+                last_20_results.clear()
 
         new_population = []
 
         # # Реалізація "хижака"
-        population = predator_approach(population, groups, lecturers, auditoriums, fitness_function)
+        #population = predator_approach(population, groups, lecturers, auditoriums, fitness_function)
 
         # # Реалізація "травоїдного" згладжування
         smoothed_population = herbivore_smoothing(population, best_schedule, lecturers, auditoriums)
@@ -415,13 +445,14 @@ def genetic_algorithm(groups, subjects, lecturers, auditoriums, generations=1000
         new_population.extend(population)
         new_population.extend(smoothed_population)
         new_population.extend(rain_population)
-
+        random.shuffle(new_population)
         # Мутація розкладів у новій популяції
         for schedule in new_population:
-            if random.random() < 0.3:
+            if random.random() < 0.5:
                 mutate(schedule, lecturers, auditoriums)
 
         # Зберігаємо стабільний розмір популяції
+        new_population = select_top_n(new_population, lambda sched: sched.soft_constraints_score, population_size)
         population = new_population[:population_size]
 
     return best_schedule
