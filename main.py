@@ -125,7 +125,7 @@ def print_individual_schedule(schedule, lecturer_id, lecturers, groups, auditori
 
     #Перевіряємо, чи є події для цього викладача
     if not schedule:
-        print(f"Розклад {lecturers[lecturer_id]['LecturerName']} не знайдено.")
+        print(f"Розклад не знайдено.")
         return
 
     schedule.sort(key=lambda x: x.timeslot)

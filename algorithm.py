@@ -118,10 +118,10 @@ class Schedule:
             subject_id = subject['SubjectID']
             subject_num_lessons = (subject['NumLectures'] + subject['NumPracticals']) * 1.5 
             if subject_id in subject_hours:
-                if subject_hours[subject_id] * 2 > subject_num_lessons:
-                    soft_constraints_score += subject_hours[subject_id] * 2 - subject_num_lessons
+                if subject_hours[subject_id] > subject_num_lessons:
+                    soft_constraints_score += subject_hours[subject_id] - subject_num_lessons
                 else:
-                    soft_constraints_score += subject_num_lessons - subject_hours[subject_id] * 2
+                    soft_constraints_score += subject_num_lessons - subject_hours[subject_id]
             else:
                 soft_constraints_score += subject_num_lessons
         total_score = hard_constraints_violations * 10 + soft_constraints_score  
