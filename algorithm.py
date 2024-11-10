@@ -114,18 +114,14 @@ class Schedule:
             if event.event_type not in lecturers[event.lecturer_id]['TypesCanTeach']:
                 soft_constraints_score += 1
             
-        #if hard_constraints_violations > 0
-        #print(f"Subject Hours {subject_hours}")
         for subject in subjects:
             subject_id = subject['SubjectID']
             subject_num_lessons = (subject['NumLectures'] + subject['NumPracticals']) * 1.5 
             if subject_id in subject_hours:
                 if subject_hours[subject_id] * 2 > subject_num_lessons:
                     soft_constraints_score += subject_hours[subject_id] * 2 - subject_num_lessons
-                    #print(subject_hours[subject_id] * 14 - subject_num_lessons)
                 else:
                     soft_constraints_score += subject_num_lessons - subject_hours[subject_id] * 2
-                    #print(subject_num_lessons - subject_hours[subject_id] * 14)
             else:
                 soft_constraints_score += subject_num_lessons
         total_score = hard_constraints_violations * 10 + soft_constraints_score  
