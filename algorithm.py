@@ -1,5 +1,6 @@
 import random
 import copy
+import math
 
 
 DAYS_PER_WEEK = 5
@@ -40,7 +41,7 @@ class Schedule:
         if event:
             self.events.append(event)  
 
-    def fitness(self, groups, lecturers, auditoriums):
+    def fitness(self, groups, lecturers, auditoriums, subjects):
         hard_constraints_violations = 0 
         soft_constraints_score = 0  
         lecturer_times = {}
@@ -48,6 +49,7 @@ class Schedule:
         subgroup_times = {}
         auditorium_times = {}
         lecturer_hours = {}
+        subject_hours = {}
 
         for event in self.events:
             #Hard обмеження
@@ -95,8 +97,11 @@ class Schedule:
             lecturer_hours_key = (event.lecturer_id, week)
             lecturer_hours[lecturer_hours_key] = lecturer_hours.get(lecturer_hours_key, 0) + 1.5
             if lecturer_hours[lecturer_hours_key] > lecturers[event.lecturer_id]['MaxHoursPerWeek']:
-                soft_constraints_score += 1  
-
+                #print(f"Lecturer hours {lecturer_hours[lecturer_hours_key]} {event.lecturer_id}")
+                soft_constraints_score += 1
+                  
+            subject_hours_key = (event.subject_id)
+            subject_hours[subject_hours_key] = subject_hours.get(subject_hours_key, 0) + 1.5
             total_group_size = sum(
                 groups[g]['NumStudents'] // 2 if event.subgroup_ids and event.subgroup_ids.get(g) else groups[g][
                     'NumStudents']
@@ -107,7 +112,22 @@ class Schedule:
             if event.subject_id not in lecturers[event.lecturer_id]['SubjectsCanTeach']:
                 soft_constraints_score += 1  
             if event.event_type not in lecturers[event.lecturer_id]['TypesCanTeach']:
-                soft_constraints_score += 1 
+                soft_constraints_score += 1
+            
+        #if hard_constraints_violations > 0
+        #print(f"Subject Hours {subject_hours}")
+        for subject in subjects:
+            subject_id = subject['SubjectID']
+            subject_num_lessons = (subject['NumLectures'] + subject['NumPracticals']) * 1.5 
+            if subject_id in subject_hours:
+                if subject_hours[subject_id] * 2 > subject_num_lessons:
+                    soft_constraints_score += subject_hours[subject_id] * 2 - subject_num_lessons
+                    #print(subject_hours[subject_id] * 14 - subject_num_lessons)
+                else:
+                    soft_constraints_score += subject_num_lessons - subject_hours[subject_id] * 2
+                    #print(subject_num_lessons - subject_hours[subject_id] * 14)
+            else:
+                soft_constraints_score += subject_num_lessons
         total_score = hard_constraints_violations * 10 + soft_constraints_score  
         self.soft_constraints_score = soft_constraints_score 
         self.hard_consts_score = hard_constraints_violations
@@ -266,13 +286,13 @@ def create_random_event(subj, groups, lecturers, auditoriums, event_type, week_t
     return event
 
 
-def select_population(population, groups, lecturers, auditoriums, fitness_function):
+def select_population(population, groups, lecturers, auditoriums, subjects, fitness_function):
     population.sort(
-        key=lambda x: fitness_function(x, groups, lecturers, auditoriums))  
+        key=lambda x: fitness_function(x, groups, lecturers, auditoriums, subjects))  
     return population[:len(population) // 2] if len(population) > 1 else population 
 
-def predator(population, groups, lecturers, auditoriums, fitness_function):
-    population = select_population(population, groups, lecturers, auditoriums, fitness_function)
+def half_best(population, groups, lecturers, auditoriums, subjects, fitness_function):
+    population = select_population(population, groups, lecturers, auditoriums, subjects, fitness_function)
     return population
 
 
@@ -342,16 +362,15 @@ def genetic_algorithm(groups, subjects, lecturers, auditoriums, generations=35):
     population = generate_initial_population(population_size, groups, subjects, lecturers, auditoriums)
     fitness_function = Schedule.fitness  
     ft = 100
-    i = 0
+    i = 1
     last_20_results = []
     while ft > 1 and i < generations:
-        population = predator(population, groups, lecturers, auditoriums, fitness_function)
-        #population = select_top_n(population, fitness_function, 50, groups, lecturers, auditoriums)
+        population = half_best(population, groups, lecturers, auditoriums, subjects, fitness_function)
         if not population:
             print("Population is empty")
             break
         best_schedule = population[0]
-        best_fitness = fitness_function(best_schedule, groups, lecturers, auditoriums)
+        best_fitness = fitness_function(best_schedule, groups, lecturers, auditoriums, subjects)
         print(f"Generation: {i + 1}, Best fitness: {best_fitness} Hard violations: {best_schedule.hard_consts_score}")
         i += 1
         ft = best_fitness
@@ -381,10 +400,8 @@ def genetic_algorithm(groups, subjects, lecturers, auditoriums, generations=35):
         while len(new_population) < population_size:
             parent1, parent2 = random.sample(population, 2)
             child1, child2 = crossover(parent1, parent2)
-            # parent1f = fitness_function(parent1, groups, lecturers, auditoriums)
-            # parent2f = fitness_function(parent2, groups, lecturers, auditoriums)
-            child1f = fitness_function(child1, groups, lecturers, auditoriums)
-            child2f = fitness_function(child2, groups, lecturers, auditoriums)
+            child1f = fitness_function(child1, groups, lecturers, auditoriums, subjects)
+            child2f = fitness_function(child2, groups, lecturers, auditoriums, subjects)
             if child1.hard_consts_score == 0 and child2.hard_consts_score == 0:
                 new_population.extend([child1, child2])
         
@@ -393,8 +410,6 @@ def genetic_algorithm(groups, subjects, lecturers, auditoriums, generations=35):
             if random.random() < 0.3:
                 mutate(schedule, lecturers, auditoriums)
 
-        #new_population = select_top_n(new_population, lambda sched: sched.soft_constraints_score, population_size)
-        #population = new_population[:population_size]
         population = new_population
 
     return best_schedule

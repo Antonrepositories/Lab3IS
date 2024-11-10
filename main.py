@@ -68,8 +68,10 @@ def generate_random_subjects(groups, num_subjects_per_group):
         for _ in range(num_subjects_per_group):
             subject_id = f"S{subject_counter}"  
             subject_name = f"Предмет {subject_counter}"  
-            num_lectures = random.randint(10, 20)  
-            num_practicals = random.randint(10, 20)  
+            #num_lectures = random.randint(10, 20)  
+            #num_practicals = random.randint(10, 20)  
+            num_lectures = 0
+            num_practicals = 2
             requires_subgroups = random.choice([True, False])  
             week_type = random.choice(['EVEN', 'ODD', 'Both'])  
             subjects.append({
@@ -123,7 +125,7 @@ def print_individual_schedule(schedule, lecturer_id, lecturers, groups, auditori
 
     #Перевіряємо, чи є події для цього викладача
     if not schedule:
-        print(f"Розклад для викладача {lecturers[lecturer_id]['LecturerName']} не знайдено.")
+        print(f"Розклад {lecturers[lecturer_id]['LecturerName']} не знайдено.")
         return
 
     schedule.sort(key=lambda x: x.timeslot)
@@ -135,7 +137,7 @@ def print_individual_schedule(schedule, lecturer_id, lecturers, groups, auditori
     if auditorium_id != None:
         print(f"Розклад для аудиторії: {auditorium_id}")
     #print(f"Розклад для викладача: {lecturers[lecturer_id]['LecturerName']}")
-    print(f"{'Timeslot':<25} {'Group(s)':<30} {'Subject':<30} {'Type':<15} {'Lecturer':<10}"
+    print(f"{'Timeslot':<25} {'Group':<30} {'Subject':<30} {'Type':<15} {'Lecturer':<10}"
           f"{'Auditorium':<10} {'Students':<10} {'Capacity':<10}")
     print("-" * 140)
 
@@ -164,9 +166,9 @@ def print_individual_schedule(schedule, lecturer_id, lecturers, groups, auditori
 
 def main():
     num_groups = 4 
-    num_subjects_per_group = 3 
-    num_lecturers = 6 
-    num_auditoriums = 7
+    num_subjects_per_group = 3#10#3 
+    num_lecturers = 4#6
+    num_auditoriums = 4#7
     groups = generate_random_groups(num_groups)
     subjects = generate_random_subjects(groups, num_subjects_per_group)
     lecturers = generate_random_lecturers(num_lecturers, subjects)
